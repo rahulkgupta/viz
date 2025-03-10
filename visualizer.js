@@ -283,6 +283,7 @@ const fragmentShader = `
 
 const trailsVertexShader = `
     attribute float size;
+    attribute vec3 color;
     varying vec3 vColor;
     uniform float time;
     uniform float beat;
@@ -296,8 +297,9 @@ const trailsVertexShader = `
         float radius = length(pos.xy);
         float c = cos(angle);
         float s = sin(angle);
-        pos.x = pos.x * c - pos.y * s;
-        pos.y = pos.x * s + pos.y * c;
+        float x = pos.x;  // Store original x value
+        pos.x = x * c - pos.y * s;
+        pos.y = x * s + pos.y * c;
         
         // Wave motion
         pos.z += sin(radius - time * 2.0) * 2.0 * (1.0 + beat);
