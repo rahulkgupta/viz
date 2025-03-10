@@ -1,8 +1,3 @@
-import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-
 // Three.js setup
 let scene, camera, renderer, composer;
 let analyser, dataArray;
@@ -288,7 +283,6 @@ const fragmentShader = `
 
 const trailsVertexShader = `
     attribute float size;
-    attribute vec3 color;
     varying vec3 vColor;
     uniform float time;
     uniform float beat;
@@ -344,12 +338,11 @@ function createBackground() {
         transparent: true,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        depthTest: false,
-        side: THREE.DoubleSide
+        depthTest: false
     });
     
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.z = -50;  // Move further back
+    mesh.position.z = -40;
     mesh.renderOrder = -1;
     return mesh;
 }
@@ -482,19 +475,14 @@ function setupPostProcessing() {
 
     const bloomPass = new THREE.UnrealBloomPass(
         new THREE.Vector2(window.innerWidth, window.innerHeight),
-        0.6,    // strength (reduced further)
-        0.4,    // radius
-        0.4     // threshold (reduced for better visibility)
+        0.8,    // strength (reduced from 1.5)
+        0.3,    // radius (reduced from 0.4)
+        0.66    // threshold (reduced from 0.85)
     );
     composer.addPass(bloomPass);
 
     // Store reference to bloom pass for dynamic updates
     window.bloomPass = bloomPass;
-
-    // Make sure renderer and composer are properly configured
-    renderer.outputEncoding = THREE.sRGBEncoding;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
 }
 
 function setupControls() {
@@ -764,14 +752,9 @@ document.getElementById('sidebar-toggle').addEventListener('click', () => {
 
 // Handle window resize
 window.addEventListener('resize', () => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    
-    camera.aspect = width / height;
+    camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-    
-    renderer.setSize(width, height);
-    composer.setSize(width, height);
+    renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
 // Initialize and start animation
