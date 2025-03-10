@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        #sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 300px;
+            background: rgba(0, 0, 0, 0.85);
+            transform: translateX(-270px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+        }
+        #sidebar.open {
+            transform: translateX(0);
+        }
+        #sidebar-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(76, 175, 80, 0.9);
+            border: none;
+            color: white;
+            width: 30px;
+            height: 60px;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        #controls {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-right: 40px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .control-group h3 {
+            margin: 0 0 10px 0;
+            font-size: 1em;
+            color: #4CAF50;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 5px;
+        }
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .control-item label {
+            font-size: 0.9em;
+            display: flex;
+            justify-content: space-between;
+        }
+        .value-display {
+            color: #4CAF50;
+            font-family: monospace;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            background: #333;
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            background: #4CAF50;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        #fileInput {
+            display: none;
+        }
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        .panel-title {
+            color: white;
+            margin: 0 0 20px 0;
+            font-size: 1.2em;
+            text-align: center;
+            padding-top: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+        select {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 5px;
+            border-radius: 4px;
+            width: 100%;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <button id="sidebar-toggle">≡</button>
+        <div id="controls">
+            <h2 class="panel-title">Audio Controls</h2>
+            
+            <div class="control-group">
+                <h3>Input</h3>
+                <button id="uploadBtn">Upload MP3</button>
+                <button id="micBtn">Use Microphone</button>
+                <input type="file" id="fileInput" accept="audio/*">
+            </div>
+
+            <div class="control-group">
+                <h3>Particles</h3>
+                <div class="control-item">
+                    <label>Count <span class="value-display" id="particleCount">10000</span></label>
+                    <input type="range" id="particleCountSlider" min="1000" max="50000" value="10000" step="1000">
+                </div>
+                <div class="control-item">
+                    <label>Size <span class="value-display" id="particleSize">2</span></label>
+                    <input type="range" id="particleSizeSlider" min="0.5" max="5" value="2" step="0.1">
+                </div>
+                <div class="control-item">
+                    <label>Spread <span class="value-display" id="particleSpread">20</span></label>
+                    <input type="range" id="particleSpreadSlider" min="5" max="50" value="20" step="1">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Motion</h3>
+                <div class="control-item">
+                    <label>Speed <span class="value-display" id="motionSpeed">1</span></label>
+                    <input type="range" id="motionSpeedSlider" min="0.1" max="3" value="1" step="0.1">
+                </div>
+                <div class="control-item">
+                    <label>Rotation <span class="value-display" id="rotationSpeed">1</span></label>
+                    <input type="range" id="rotationSpeedSlider" min="0" max="5" value="1" step="0.1">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Audio Reactivity</h3>
+                <div class="control-item">
+                    <label>Beat Sensitivity <span class="value-display" id="beatSensitivity">0.5</span></label>
+                    <input type="range" id="beatSensitivitySlider" min="0.1" max="1" value="0.5" step="0.05">
+                </div>
+                <div class="control-item">
+                    <label>Smoothing <span class="value-display" id="smoothing">0.8</span></label>
+                    <input type="range" id="smoothingSlider" min="0" max="0.95" value="0.8" step="0.05">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Colors</h3>
+                <div class="control-item">
+                    <label>Color Scheme</label>
+                    <select id="colorScheme">
+                        <option value="rainbow">Rainbow</option>
+                        <option value="fire">Fire</option>
+                        <option value="ocean">Ocean</option>
+                        <option value="neon">Neon</option>
+                    </select>
+                </div>
+                <div class="control-item">
+                    <label>Intensity <span class="value-display" id="colorIntensity">1</span></label>
+                    <input type="range" id="colorIntensitySlider" min="0.1" max="2" value="1" step="0.1">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Camera</h3>
+                <div class="control-item">
+                    <label>Distance <span class="value-display" id="cameraDistance">30</span></label>
+                    <input type="range" id="cameraDistanceSlider" min="10" max="100" value="30" step="1">
+                </div>
+                <div class="control-item">
+                    <label>Movement <span class="value-display" id="cameraMovement">1</span></label>
+                    <input type="range" id="cameraMovementSlider" min="0" max="2" value="1" step="0.1">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Effects</h3>
+                <div class="control-item">
+                    <label>Bloom Strength <span class="value-display" id="bloomStrength">1.5</span></label>
+                    <input type="range" id="bloomStrengthSlider" min="0" max="3" value="1.5" step="0.1">
+                </div>
+                <div class="control-item">
+                    <label>Background Intensity <span class="value-display" id="bgIntensity">0.6</span></label>
+                    <input type="range" id="bgIntensitySlider" min="0" max="1" value="0.6" step="0.1">
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="visualizer.js"></script>
+</body>
+</html> 
